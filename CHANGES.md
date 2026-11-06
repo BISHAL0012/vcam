@@ -246,3 +246,12 @@ Renew line turns amber at ≤ 3 days.
 - KeyManager: expires_at now accepts a UTC timestamp ("2026-11-06T18:30:00Z") as well as a plain date; new timeLeftText() ("5 days left" / "3 hours left" / "25 min left") and displayExpiry(); findEntry now rejects by exact expiry instant (also fixes date keys staying valid <24h past expiry).
 - HomeScreen: header badge + key card use the new time-left text; expiry shown as "2026-11-06 18:30 UTC" for timestamp keys.
 - versionCode 2, versionName 1.1. min_version_code stays 1 (old builds keep working; minute keys on old builds behave as day keys).
+
+## v1.2 (2026-11-06) — Renew button works
+- HomeScreen: 'Renew: Telegram / imo' in the key card is now tappable (underlined) and opens a dialog with Telegram / imo buttons that open the contact links from config.json. (It was plain text before, so tapping did nothing.)
+- versionCode 3, versionName 1.2.
+
+## v1.3 (2026-11-06) — enforce key expiry while running
+- HomeScreen: new LaunchedEffect re-checks the key every 60s while VALID. Expired/revoked key (NEED_KEY) or forced update (UPDATE_REQUIRED) locks the app back to the key screen; a still-valid key refreshes the time-left badge live. NO_INTERNET on a re-check is ignored (brief network blip must not kick the user out); the next cycle retries.
+- This closes the bypass where a key kept working forever if the app stayed open/minimised past its expiry.
+- versionCode 4, versionName 1.3.
