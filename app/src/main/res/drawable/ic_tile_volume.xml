@@ -1,0 +1,22 @@
+<!-- iPhone-style glyph: speaker with sound waves -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M3,9.5 L7,9.5 L11.5,5.5 V18.5 L7,14.5 L3,14.5 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M14,9.5 C15.5,10.8 15.5,13.2 14,14.5" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M16.5,7.5 C19,9.7 19,14.3 16.5,16.5" />
+</vector>
