@@ -21,11 +21,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +40,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -121,6 +124,7 @@ fun HomeScreen() {
     var imoUrl by remember { mutableStateOf("https://imo.im/") }
     var keyMessage by remember { mutableStateOf<String?>(null) }
     var checkNonce by remember { mutableStateOf(0) }
+    var showRenew by remember { mutableStateOf(false) }
 
     LaunchedEffect(checkNonce) {
         homeController.init()
@@ -538,9 +542,32 @@ fun HomeScreen() {
             Text(
                 text = "Renew: Telegram / imo",
                 fontSize = 15.sp,
-                color = if (daysLeft in 0..3) AmberWarn else Color(0xFFEBDCFF)
+                color = if (daysLeft in 0..3) AmberWarn else Color(0xFFEBDCFF),
+                textDecoration = TextDecoration.Underline,
+                modifier = Modifier.clickable { showRenew = true }
             )
         }
+    }
+
+    // Renew dialog: pick Telegram or imo to contact for a new key.
+    if (showRenew) {
+        AlertDialog(
+            onDismissRequest = { showRenew = false },
+            title = { Text("Renew key") },
+            text = { Text("Contact to renew your key:") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showRenew = false
+                    openUrl(telegramUrl)
+                }) { Text("Telegram") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showRenew = false
+                    openUrl(imoUrl)
+                }) { Text("imo") }
+            }
+        )
     }
 
     VideoPlayerDialog(homeController)
