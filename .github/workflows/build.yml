@@ -59,6 +59,8 @@ jobs:
         run: |
           echo "$KEYSTORE_BASE64" | base64 -d > keystore.jks
           test -s keystore.jks
+          ls -l keystore.jks
+          sha256sum keystore.jks
 
       - name: Verify signing keystore
         env:
