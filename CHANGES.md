@@ -255,3 +255,8 @@ Renew line turns amber at ≤ 3 days.
 - HomeScreen: new LaunchedEffect re-checks the key every 60s while VALID. Expired/revoked key (NEED_KEY) or forced update (UPDATE_REQUIRED) locks the app back to the key screen; a still-valid key refreshes the time-left badge live. NO_INTERNET on a re-check is ignored (brief network blip must not kick the user out); the next cycle retries.
 - This closes the bypass where a key kept working forever if the app stayed open/minimised past its expiry.
 - versionCode 4, versionName 1.3.
+
+## v1.4 (2026-11-06) — permanent signing key + update screen links
+- Fixed: every GitHub build was signed with a fresh debug key (new runner = new keystore), so Settings.Secure.ANDROID_ID changed on every update and all keys broke. Now all builds are signed with ONE permanent release keystore (SHA-256 fingerprint 0B:C8:B9:84:51:9B:65:E0:66:90:30:EC:15:14:B3:F8:DF:FE:2E:C3:E9:EA:E8:C1:6A:C4:63:4E:40:C7:22:2A, valid until 2051). The keystore lives only in the repo secret KEYSTORE_BASE64 (passwords in KEYSTORE_PASSWORD / KEY_PASSWORD, alias in KEY_ALIAS); build.gradle.kts reads them from env and falls back to debug signing when absent. Android ID now stays stable until factory reset; ONE last ID change happens on the first install of this build — all keys must be re-issued once.
+- Update screen (UPDATE_REQUIRED): added a full-width "Download Update" button opening the release page (release_url from config.json, default https://github.com/BISHAL0012/Vcam-App/releases), above the existing Telegram / imo buttons. config.json gains release_url.
+- versionCode 5, versionName 1.4.
