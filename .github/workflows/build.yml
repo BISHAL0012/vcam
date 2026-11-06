@@ -60,6 +60,12 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 -d > keystore.jks
           test -s keystore.jks
 
+      - name: Verify signing keystore
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          keytool -list -keystore keystore.jks -storepass "$KEYSTORE_PASSWORD"
+
       - name: Build release APK
         env:
           KEYSTORE_FILE: ${{ github.workspace }}/keystore.jks
