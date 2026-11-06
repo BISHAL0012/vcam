@@ -51,6 +51,7 @@ import com.wangyiheng.vcamsx.components.VideoPlayerDialog
 import com.wangyiheng.vcamsx.modules.home.controllers.HomeController
 import com.wangyiheng.vcamsx.utils.KeyManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 // ---- Layout H colours ----
@@ -136,6 +137,44 @@ fun HomeScreen() {
         telegramUrl = result.telegramUrl
         imoUrl = result.imoUrl
         keyMessage = result.message
+    }
+
+    // ---- Key re-check while the app runs ----
+    // The key used to be checked only on app start, so an expired key
+    // kept working if the app stayed open/minimised. Re-check every
+    // 60s while VALID: expired/revoked -> lock back to the key screen;
+    // still valid -> refresh the time-left badge. A failed fetch
+    // (NO_INTERNET) is ignored so a brief network blip does not
+    // kick the user out; the next cycle retries.
+    LaunchedEffect(keyState) {
+        if (keyState != KeyManager.State.VALID) return@LaunchedEffect
+        while (true) {
+            delay(60_000L)
+            val result = KeyManager.check(context)
+            when (result.state) {
+                KeyManager.State.VALID -> {
+                    daysLeft = result.daysLeft
+                    timeLeft = result.timeLeft
+                    expiresAt = result.expiresAt
+                    telegramUrl = result.telegramUrl
+                    imoUrl = result.imoUrl
+                }
+                KeyManager.State.NEED_KEY,
+                KeyManager.State.UPDATE_REQUIRED -> {
+                    keyState = result.state
+                    daysLeft = result.daysLeft
+                    timeLeft = result.timeLeft
+                    expiresAt = result.expiresAt
+                    telegramUrl = result.telegramUrl
+                    imoUrl = result.imoUrl
+                    keyMessage = result.message
+                    break
+                }
+                else -> {
+                    // NO_INTERNET / CHECKING: keep running, retry next cycle.
+                }
+            }
+        }
     }
 
     fun openUrl(url: String) {
