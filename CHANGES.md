@@ -241,3 +241,8 @@ for persisted-status compatibility; nothing can set or use them.
 8. Key expiry semantics: `expires_at` "2026-12-06" stays valid through
 that whole day (UTC); `daysLeft` is 0 on the expiry day, and the
 Renew line turns amber at ≤ 3 days.
+
+## v1.1 (2026-11-06) — minute/hour keys
+- KeyManager: expires_at now accepts a UTC timestamp ("2026-11-06T18:30:00Z") as well as a plain date; new timeLeftText() ("5 days left" / "3 hours left" / "25 min left") and displayExpiry(); findEntry now rejects by exact expiry instant (also fixes date keys staying valid <24h past expiry).
+- HomeScreen: header badge + key card use the new time-left text; expiry shown as "2026-11-06 18:30 UTC" for timestamp keys.
+- versionCode 2, versionName 1.1. min_version_code stays 1 (old builds keep working; minute keys on old builds behave as day keys).
