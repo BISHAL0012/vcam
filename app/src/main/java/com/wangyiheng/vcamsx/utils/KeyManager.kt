@@ -63,6 +63,7 @@ object KeyManager {
         val expiresAt: String? = null,
         val telegramUrl: String = "https://t.me/",
         val imoUrl: String = "https://imo.im/",
+        val releaseUrl: String = "https://github.com/BISHAL0012/Vcam-App/releases",
         val message: String? = null
     )
 
@@ -176,7 +177,8 @@ object KeyManager {
         val keys: List<JSONObject>,
         val minVersionCode: Int,
         val telegramUrl: String,
-        val imoUrl: String
+        val imoUrl: String,
+        val releaseUrl: String
     )
 
     private fun fetchServer(): ServerData {
@@ -193,7 +195,8 @@ object KeyManager {
             keys = keys,
             minVersionCode = configJson.optInt("min_version_code", 1),
             telegramUrl = configJson.optString("telegram_url", "https://t.me/"),
-            imoUrl = configJson.optString("imo_url", "https://imo.im/")
+            imoUrl = configJson.optString("imo_url", "https://imo.im/"),
+            releaseUrl = configJson.optString("release_url", "https://github.com/BISHAL0012/Vcam-App/releases")
         )
     }
 
@@ -230,6 +233,7 @@ object KeyManager {
             return@withContext CheckResult(
                 State.UPDATE_REQUIRED,
                 telegramUrl = server.telegramUrl,
+                releaseUrl = server.releaseUrl,
                 imoUrl = server.imoUrl,
                 message = "Please update Vcam to the latest version."
             )
@@ -239,6 +243,7 @@ object KeyManager {
             return@withContext CheckResult(
                 State.NEED_KEY,
                 telegramUrl = server.telegramUrl,
+                releaseUrl = server.releaseUrl,
                 imoUrl = server.imoUrl
             )
         }
@@ -248,6 +253,7 @@ object KeyManager {
             return@withContext CheckResult(
                 State.NEED_KEY,
                 telegramUrl = server.telegramUrl,
+                releaseUrl = server.releaseUrl,
                 imoUrl = server.imoUrl,
                 message = "Your key is no longer valid. Please enter a new key."
             )
@@ -259,6 +265,7 @@ object KeyManager {
             timeLeft = timeLeftText(expiresAt),
             expiresAt = expiresAt,
             telegramUrl = server.telegramUrl,
+            releaseUrl = server.releaseUrl,
             imoUrl = server.imoUrl
         )
     }
@@ -280,6 +287,7 @@ object KeyManager {
                 return@withContext CheckResult(
                     State.UPDATE_REQUIRED,
                     telegramUrl = server.telegramUrl,
+                    releaseUrl = server.releaseUrl,
                     imoUrl = server.imoUrl,
                     message = "Please update Vcam to the latest version."
                 )
@@ -289,6 +297,7 @@ object KeyManager {
                 return@withContext CheckResult(
                     State.NEED_KEY,
                     telegramUrl = server.telegramUrl,
+                    releaseUrl = server.releaseUrl,
                     imoUrl = server.imoUrl,
                     message = "Invalid or expired key."
                 )
@@ -303,6 +312,7 @@ object KeyManager {
                 timeLeft = timeLeftText(expiresAt),
                 expiresAt = expiresAt,
                 telegramUrl = server.telegramUrl,
+                releaseUrl = server.releaseUrl,
                 imoUrl = server.imoUrl
             )
         }
