@@ -31,7 +31,9 @@ android {
                 storeFile = file(ksFile)
                 storePassword = System.getenv("KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("KEY_ALIAS")
-                keyPassword = System.getenv("KEY_PASSWORD")
+                // PKCS12 requires the key password to equal the store
+                // password; the KEY_PASSWORD secret is not used.
+                keyPassword = System.getenv("KEYSTORE_PASSWORD")
             }
         }
     }
