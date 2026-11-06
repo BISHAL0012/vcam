@@ -115,6 +115,7 @@ fun HomeScreen() {
     // ---- Key gate (checked on every app start) ----
     var keyState by remember { mutableStateOf(KeyManager.State.CHECKING) }
     var daysLeft by remember { mutableStateOf(-1) }
+    var timeLeft by remember { mutableStateOf("") }
     var expiresAt by remember { mutableStateOf<String?>(null) }
     var telegramUrl by remember { mutableStateOf("https://t.me/") }
     var imoUrl by remember { mutableStateOf("https://imo.im/") }
@@ -126,6 +127,7 @@ fun HomeScreen() {
         val result = KeyManager.check(context)
         keyState = result.state
         daysLeft = result.daysLeft
+        timeLeft = result.timeLeft
         expiresAt = result.expiresAt
         telegramUrl = result.telegramUrl
         imoUrl = result.imoUrl
@@ -238,6 +240,7 @@ fun HomeScreen() {
                 imoUrl = imoUrl,
                 onActivated = { result ->
                     daysLeft = result.daysLeft
+                    timeLeft = result.timeLeft
                     expiresAt = result.expiresAt
                     telegramUrl = result.telegramUrl
                     imoUrl = result.imoUrl
@@ -327,7 +330,8 @@ fun HomeScreen() {
                     .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Text(
-                    text = if (daysLeft >= 0) "$daysLeft days left" else "Key active",
+                    text = if (timeLeft.isNotBlank()) timeLeft
+                        else if (daysLeft >= 0) "$daysLeft days left" else "Key active",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -524,7 +528,7 @@ fun HomeScreen() {
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = "Key valid until ${expiresAt ?: "—"}",
+                    text = "Key valid until ${expiresAt?.let { KeyManager.displayExpiry(it) } ?: "—"}",
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
