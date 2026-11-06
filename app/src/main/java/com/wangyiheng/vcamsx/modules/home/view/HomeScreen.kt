@@ -123,6 +123,7 @@ fun HomeScreen() {
     var expiresAt by remember { mutableStateOf<String?>(null) }
     var telegramUrl by remember { mutableStateOf("https://t.me/") }
     var imoUrl by remember { mutableStateOf("https://imo.im/") }
+    var releaseUrl by remember { mutableStateOf("https://github.com/BISHAL0012/Vcam-App/releases") }
     var keyMessage by remember { mutableStateOf<String?>(null) }
     var checkNonce by remember { mutableStateOf(0) }
     var showRenew by remember { mutableStateOf(false) }
@@ -135,6 +136,7 @@ fun HomeScreen() {
         timeLeft = result.timeLeft
         expiresAt = result.expiresAt
         telegramUrl = result.telegramUrl
+        releaseUrl = result.releaseUrl
         imoUrl = result.imoUrl
         keyMessage = result.message
     }
@@ -157,6 +159,7 @@ fun HomeScreen() {
                     timeLeft = result.timeLeft
                     expiresAt = result.expiresAt
                     telegramUrl = result.telegramUrl
+                    releaseUrl = result.releaseUrl
                     imoUrl = result.imoUrl
                 }
                 KeyManager.State.NEED_KEY,
@@ -166,6 +169,7 @@ fun HomeScreen() {
                     timeLeft = result.timeLeft
                     expiresAt = result.expiresAt
                     telegramUrl = result.telegramUrl
+                    releaseUrl = result.releaseUrl
                     imoUrl = result.imoUrl
                     keyMessage = result.message
                     break
@@ -251,6 +255,14 @@ fun HomeScreen() {
                         fontSize = 15.sp
                     )
                     Spacer(Modifier.height(24.dp))
+                    Button(
+                        onClick = { openUrl(releaseUrl) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF8B5CF6)
+                        )
+                    ) { Text("Download Update") }
+                    Spacer(Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = { openUrl(telegramUrl) },
@@ -286,6 +298,7 @@ fun HomeScreen() {
                     timeLeft = result.timeLeft
                     expiresAt = result.expiresAt
                     telegramUrl = result.telegramUrl
+                    releaseUrl = result.releaseUrl
                     imoUrl = result.imoUrl
                     keyState = KeyManager.State.VALID
                 }
