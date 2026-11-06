@@ -55,9 +55,12 @@ jobs:
 
       - name: Decode signing keystore
         env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_B64_1: ${{ secrets.KEYSTORE_B64_1 }}
+          KEYSTORE_B64_2: ${{ secrets.KEYSTORE_B64_2 }}
+          KEYSTORE_B64_3: ${{ secrets.KEYSTORE_B64_3 }}
+          KEYSTORE_B64_4: ${{ secrets.KEYSTORE_B64_4 }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 -d > keystore.jks
+          echo -n "${KEYSTORE_B64_1}${KEYSTORE_B64_2}${KEYSTORE_B64_3}${KEYSTORE_B64_4}" | base64 -d > keystore.jks
           test -s keystore.jks
           ls -l keystore.jks
           sha256sum keystore.jks
