@@ -21,6 +21,9 @@ import java.util.TimeZone
  *   keys.json   {"keys":[{"android_id_sha256":"<hex>","key":"VCAM-XXXX-XXXX",
  *                         "name":"<customer>","contact":"<telegram/imo>",
  *                         "expires_at":"2026-12-06","active":true}]}
+ *                 expires_at is a plain date ("2026-12-06", valid through
+ *                 that day) for day keys, or a UTC timestamp
+ *                 ("2026-11-06T18:30:00Z") for minute/hour keys.
  *   config.json {"min_version_code":1,
  *                "telegram_url":"https://t.me/username",
  *                "imo_url":"https://imo.im/xxxx"}
@@ -56,6 +59,7 @@ object KeyManager {
     data class CheckResult(
         val state: State,
         val daysLeft: Int = -1,
+        val timeLeft: String = "",
         val expiresAt: String? = null,
         val telegramUrl: String = "https://t.me/",
         val imoUrl: String = "https://imo.im/",
@@ -128,18 +132,44 @@ object KeyManager {
         }
     }
 
-    /** End of the expiry day (exclusive): "2026-12-06" stays valid through that day. */
+    /** Expiry instant (exclusive). Plain date = valid through that day;
+     *  full UTC timestamp ("2026-11-06T18:30:00Z") = exact minute. */
     private fun expiryEndMs(expiresAt: String): Long {
+        val trimmed = expiresAt.trim()
+        if (trimmed.contains('T')) {
+            val fmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }
+            return fmt.parse(trimmed)?.time ?: 0L
+        }
         val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")
         }
-        val date = fmt.parse(expiresAt) ?: return 0L
+        val date = fmt.parse(trimmed) ?: return 0L
         return date.time + 24L * 60L * 60L * 1000L
     }
 
     private fun daysLeft(expiresAt: String): Int {
         val left = expiryEndMs(expiresAt) - System.currentTimeMillis()
         return (left / (24L * 60L * 60L * 1000L)).toInt()
+    }
+
+    /** Human time left: "5 days left" / "3 hours left" / "25 min left". */
+    fun timeLeftText(expiresAt: String): String {
+        val leftMs = expiryEndMs(expiresAt) - System.currentTimeMillis()
+        if (leftMs <= 0) return "Expired"
+        val minutes = leftMs / (60L * 1000L)
+        if (minutes < 60) return "$minutes min left"
+        val hours = minutes / 60
+        if (hours < 24) return "$hours hours left"
+        return "${hours / 24} days left"
+    }
+
+    /** Display form of expires_at: timestamps as "2026-11-06 18:30 UTC". */
+    fun displayExpiry(expiresAt: String): String {
+        val trimmed = expiresAt.trim()
+        if (!trimmed.contains('T')) return trimmed
+        return trimmed.replace('T', ' ').removeSuffix("Z") + " UTC"
     }
 
     private data class ServerData(
@@ -180,7 +210,7 @@ object KeyManager {
             if (entry.optString("android_id_sha256", "") != idHash) continue
             val expiresAt = entry.optString("expires_at", "")
             if (expiresAt.isBlank()) continue
-            if (daysLeft(expiresAt) < 0) continue
+            if (expiryEndMs(expiresAt) <= System.currentTimeMillis()) continue
             return entry
         }
         return null
@@ -226,6 +256,7 @@ object KeyManager {
         CheckResult(
             State.VALID,
             daysLeft = daysLeft(expiresAt),
+            timeLeft = timeLeftText(expiresAt),
             expiresAt = expiresAt,
             telegramUrl = server.telegramUrl,
             imoUrl = server.imoUrl
@@ -269,6 +300,7 @@ object KeyManager {
             CheckResult(
                 State.VALID,
                 daysLeft = daysLeft(expiresAt),
+                timeLeft = timeLeftText(expiresAt),
                 expiresAt = expiresAt,
                 telegramUrl = server.telegramUrl,
                 imoUrl = server.imoUrl
