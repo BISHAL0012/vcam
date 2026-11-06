@@ -1,7 +1,5 @@
 package com.wangyiheng.vcamsx.components
 
-@file:OptIn(ExperimentalMaterial3Api::class)
-
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -38,6 +36,7 @@ import kotlinx.coroutines.launch
  * Contact URLs come from the server config, so the seller can change
  * them any time without a new build.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KeyDialog(
     telegramUrl: String,
