@@ -19,6 +19,7 @@ import android.widget.Toast
 import cn.dianbobo.dbb.util.HLog
 import com.wangyiheng.vcamsx.utils.InfoProcesser.videoStatus
 import com.wangyiheng.vcamsx.utils.OutputImageFormat
+import com.wangyiheng.vcamsx.utils.PhotoToFrames
 import com.wangyiheng.vcamsx.utils.VideoPlayer.c1_camera_play
 import com.wangyiheng.vcamsx.utils.VideoPlayer.camera2Play
 import com.wangyiheng.vcamsx.utils.VideoPlayer.initializeTheStateAsWellAsThePlayer
@@ -55,6 +56,18 @@ class MainHook : IXposedHookLoadPackage {
         var camera_onPreviewFrame: Camera? = null
         var camera_callback_calss: Class<*>? = null
         var hw_decode_obj: VideoToFrames? = null
+        var photo_decode_obj: PhotoToFrames? = null
+
+        // Live Photo (v1.6): is the selected media (behind the
+        // videoprovider URI) a still image? Answered by the provider's
+        // getType(); any failure means "video" (today's behaviour).
+        fun isPhotoUri(uri: Uri): Boolean {
+            return try {
+                context?.contentResolver?.getType(uri)?.startsWith("image/") == true
+            } catch (e: Exception) {
+                false
+            }
+        }
 
         var mcamera1: Camera? = null
         var oriHolder: SurfaceHolder? = null
@@ -221,24 +234,36 @@ class MainHook : IXposedHookLoadPackage {
                         if ( hw_decode_obj != null) {
                              hw_decode_obj!!.stopDecode()
                         }
-                        Toast.makeText(context, """
-                                Video resolution must match the camera exactly
-                                Width: ${mwidth}
-                                Height: ${mhight}
-                                """.trimIndent(), Toast.LENGTH_SHORT).show()
-                        hw_decode_obj = VideoToFrames()
-                        hw_decode_obj!!.setSaveFrames(OutputImageFormat.NV21)
-                        // imo call fix: tell the decoder the exact preview
-                        // size this camera asked for, so frames are
-                        // rescaled to it instead of being copied at the
-                        // video's native size (the stripe cause). Only
-                        // the Camera1 onPreviewFrame path sets this;
-                        // Surface/Camera2 paths are unaffected.
-                        hw_decode_obj!!.setTargetSize(mwidth, mhight)
-
+                        if ( photo_decode_obj != null) {
+                             photo_decode_obj!!.stopDecode()
+                        }
                         val videoUrl = "content://com.wangyiheng.vcamsx.videoprovider"
                         val videoPathUri = Uri.parse(videoUrl)
-                        hw_decode_obj!!.decode( videoPathUri )
+                        if (isPhotoUri(videoPathUri)) {
+                            // Live Photo (v1.6): the selected file is a
+                            // still image — animate it (slow zoom/pan)
+                            // instead of decoding a video.
+                            photo_decode_obj = PhotoToFrames()
+                            photo_decode_obj!!.setSaveFrames(OutputImageFormat.NV21)
+                            photo_decode_obj!!.setTargetSize(mwidth, mhight)
+                            photo_decode_obj!!.decode( videoPathUri )
+                        } else {
+                            Toast.makeText(context, """
+                                    Video resolution must match the camera exactly
+                                    Width: ${mwidth}
+                                    Height: ${mhight}
+                                    """.trimIndent(), Toast.LENGTH_SHORT).show()
+                            hw_decode_obj = VideoToFrames()
+                            hw_decode_obj!!.setSaveFrames(OutputImageFormat.NV21)
+                            // imo call fix: tell the decoder the exact preview
+                            // size this camera asked for, so frames are
+                            // rescaled to it instead of being copied at the
+                            // video's native size (the stripe cause). Only
+                            // the Camera1 onPreviewFrame path sets this;
+                            // Surface/Camera2 paths are unaffected.
+                            hw_decode_obj!!.setTargetSize(mwidth, mhight)
+                            hw_decode_obj!!.decode( videoPathUri )
+                        }
                         while ( data_buffer == null) {
                         }
                         System.arraycopy(data_buffer, 0, paramd.args[0], 0, min(data_buffer.size.toDouble(), (paramd.args[0] as ByteArray).size.toDouble()).toInt())
