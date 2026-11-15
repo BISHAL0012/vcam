@@ -6,6 +6,7 @@ import android.util.Log
 import android.view.Surface
 import com.wangyiheng.vcamsx.MainHook.Companion.c2_reader_Surfcae
 import com.wangyiheng.vcamsx.MainHook.Companion.context
+import com.wangyiheng.vcamsx.MainHook.Companion.isPhotoUri
 import com.wangyiheng.vcamsx.MainHook.Companion.oriHolder
 import com.wangyiheng.vcamsx.MainHook.Companion.original_c1_preview_SurfaceTexture
 import com.wangyiheng.vcamsx.MainHook.Companion.original_preview_Surface
@@ -16,6 +17,8 @@ import java.util.concurrent.TimeUnit
 
 object VideoPlayer {
     var c2_hw_decode_obj: VideoToFrames? = null
+    var photo_decode_obj: PhotoToFrames? = null
+    var photoSurface: Surface? = null
     var mediaPlayer: MediaPlayer? = null
     var c3_player: MediaPlayer? = null
     var copyReaderSurface:Surface? = null
@@ -76,6 +79,13 @@ object VideoPlayer {
             videoStatus?.also { status ->
                 if (!status.isVideoEnable && !status.isLiveStreamingEnabled) return
 
+                if (isPhotoUri(Uri.parse("content://com.wangyiheng.vcamsx.videoprovider"))) {
+                    // Live Photo (v1.6): MediaPlayer cannot play a still
+                    // image — draw the animated photo onto the surface.
+                    startPhotoPlayer(surface)
+                    return
+                }
+
                 val volume = if (status.volume) 1F else 0F
 
                 mediaPlayer?.also {
@@ -103,7 +113,25 @@ object VideoPlayer {
     }
 
 
+    // Live Photo (v1.6): (re)start the photo animator on a surface,
+    // unless it is already running on that same surface.
+    private fun startPhotoPlayer(surface: Surface) {
+        if (photo_decode_obj?.isRunning() == true && photoSurface == surface) return
+        releaseMediaPlayer()
+        photo_decode_obj = PhotoToFrames()
+        photo_decode_obj!!.set_surface(surface)
+        photo_decode_obj!!.decode(Uri.parse("content://com.wangyiheng.vcamsx.videoprovider"))
+        photoSurface = surface
+    }
+
+    private fun stopPhotoPlayer() {
+        photo_decode_obj?.stopDecode()
+        photo_decode_obj = null
+        photoSurface = null
+    }
+
     fun releaseMediaPlayer(){
+        stopPhotoPlayer()
         if(mediaPlayer == null)return
         mediaPlayer?.stop()
         mediaPlayer?.release()
@@ -144,7 +172,8 @@ object VideoPlayer {
 
     fun c2_reader_play(c2_reader_Surfcae:Surface){
         if(c2_reader_Surfcae == copyReaderSurface){
-            return
+            if (c2_hw_decode_obj != null || photo_decode_obj?.isRunning() == true) return
+            // else: the previous player died — fall through and recreate.
         }
 
         copyReaderSurface = c2_reader_Surfcae
@@ -152,6 +181,16 @@ object VideoPlayer {
         if(c2_hw_decode_obj != null){
             c2_hw_decode_obj!!.stopDecode()
             c2_hw_decode_obj = null
+        }
+        stopPhotoPlayer()
+
+        if (isPhotoUri(Uri.parse("content://com.wangyiheng.vcamsx.videoprovider"))) {
+            // Live Photo (v1.6): animate the still image onto the surface.
+            photo_decode_obj = PhotoToFrames()
+            photo_decode_obj!!.set_surface(c2_reader_Surfcae)
+            photo_decode_obj!!.decode(Uri.parse("content://com.wangyiheng.vcamsx.videoprovider"))
+            photoSurface = c2_reader_Surfcae
+            return
         }
 
         c2_hw_decode_obj = VideoToFrames()
