@@ -87,8 +87,17 @@ class VideoProvider : ContentProvider(), KoinComponent {
         return cursor
     }
 
-    // 其他方法根据需要实现，这里为了简单起见，我们留空
-    override fun getType(uri: Uri): String? = null
+    // Live Photo (v1.6): report the saved file's real MIME type, so
+    // the hook processes (MainHook / VideoPlayer) can tell a still
+    // image from a video without needing the original URI's grant.
+    override fun getType(uri: Uri): String? {
+        return try {
+            val videoInfo = infoManager.getVideoInfo() ?: return null
+            context?.contentResolver?.getType(Uri.parse(videoInfo.videoUrl))
+        } catch (e: Exception) {
+            null
+        }
+    }
     override fun insert(uri: Uri, values: ContentValues?): Uri? = null
     override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int = 0
     override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?): Int = 0
