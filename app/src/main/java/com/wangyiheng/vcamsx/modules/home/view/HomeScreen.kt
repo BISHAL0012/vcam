@@ -69,7 +69,7 @@ import kotlinx.coroutines.withContext
 private fun glassVector(pathData: String): ImageVector =
     ImageVector.Builder("glass", 24.dp, 24.dp, 24f, 24f)
         .addPath(
-            PathParser().parsePathString(pathData),
+            PathParser().parsePathString(pathData).toNodes(),
             PathFillType.NonZero,
             fill = SolidColor(Color.Black)
         ).build()
