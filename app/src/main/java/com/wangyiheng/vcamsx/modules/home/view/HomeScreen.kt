@@ -1,10 +1,12 @@
 // Vcam HomeScreen — GLASS design (v1.5, mockup vcam-glass reference).
 // Aurora gradient background + frosted-glass cards. Home UI only:
-// Select Video (hero), View Video, Video / Volume / Soft-Decoding
+// Select Video / Photo (hero), View Video, Video / Volume / Soft-Decoding
 // switches, Now Playing banner, License pill, Key bar + Renew.
 // Original VCAMSX features only: NO Sound Boost, NO My Videos,
 // NO Floating Logo, NO Auto Leveling, NO Live Stream / RTMP,
 // NO mic hook, NO panel. IP collection is gone (Vcam is IP-free).
+// v1.6 adds Live Photo: a picked photo is animated (slow zoom/pan)
+// as the virtual camera instead of a frozen frame.
 // Logo is an iPhone-style rounded square, NOT a circle.
 // NOTE: this file intentionally has NO package declaration (it never
 // had one): MainActivity imports it as `import HomeScreen`.
@@ -458,8 +460,11 @@ fun HomeScreen() {
         mutableStateOf(homeController.infoManager.getVideoInfo()?.videoUrl)
     }
 
-    val selectVideoLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+    // Live Photo (v1.6): the picker accepts videos AND photos.
+    // PickVisualMedia shows the system photo picker (photos + videos
+    // in one list); on devices without it, it falls back to GetContent.
+    val selectMediaLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         uri?.let {
             homeController.copyVideoToAppDir(context, it)
@@ -467,11 +472,19 @@ fun HomeScreen() {
         }
     }
 
+    fun launchMediaPicker() {
+        selectMediaLauncher.launch(
+            ActivityResultContracts.PickVisualMedia.PickVisualMediaRequest(
+                ActivityResultContracts.PickVisualMedia.ImageAndVideo
+            )
+        )
+    }
+
     val requestPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted: Boolean ->
             if (isGranted) {
-                selectVideoLauncher.launch("video/*")
+                launchMediaPicker()
             } else {
                 if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
                     Toast.makeText(
@@ -480,7 +493,7 @@ fun HomeScreen() {
                         Toast.LENGTH_SHORT
                     ).show()
                 } else {
-                    selectVideoLauncher.launch("video/*")
+                    launchMediaPicker()
                 }
             }
         }
@@ -672,13 +685,13 @@ fun HomeScreen() {
                     }
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        text = "Select Video",
+                        text = "Select Video / Photo",
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
                     Text(
-                        text = "Choose your video file",
+                        text = "Video or photo — photos move live",
                         fontSize = 14.sp,
                         color = SubText
                     )
