@@ -1,19 +1,11 @@
 {
   "keys": [
     {
-      "android_id_sha256": "437df2473a9fc44fe697ffc86f854d152cd0089c0b1d2913f199d5673047f15b",
-      "key": "VCAM-Y8W6-57Z3-J43E",
-      "name": "Test",
-      "contact": "",
-      "expires_at": "2026-11-14T05:15:26Z",
-      "active": true
-    },
-    {
       "android_id_sha256": "38f49c2b2725fddf57e4386e5805e2889b61b64033a4428de8c0399336ba6125",
-      "key": "VCAM-KWYX-ZPJX-UERA",
-      "name": "",
-      "contact": "",
-      "expires_at": "2026-11-14T05:09:53Z",
+      "key": "VCAM-R6DD-DSKB-UY3S",
+      "name": "J",
+      "contact": "Test",
+      "expires_at": "2026-12-15",
       "active": true
     }
   ]
