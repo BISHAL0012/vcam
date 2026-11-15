@@ -22,12 +22,9 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateColorAsState
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -176,60 +173,58 @@ private fun AuroraBackground(content: @Composable BoxScope.() -> Unit) {
 // LiquidGlass reuses this with a negative offset, so each card shows
 // the blurred piece of the background that sits behind it.
 private fun DrawScope.drawAuroraBlobs(rootSize: Size, translateBy: Offset) {
-    translate(translateBy.x, translateBy.y) {
-        // Purple glow, top-left.
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    Color(0xFF7C3AED).copy(alpha = 0.85f),
-                    Color.Transparent
-                ),
-                center = Offset(rootSize.width * 0.05f, rootSize.height * 0.02f),
-                radius = rootSize.width * 0.8f
+    // Purple glow, top-left.
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF7C3AED).copy(alpha = 0.85f),
+                Color.Transparent
             ),
-            radius = rootSize.width * 0.8f,
-            center = Offset(rootSize.width * 0.05f, rootSize.height * 0.02f)
-        )
-        // Blue glow, right.
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    Color(0xFF2563EB).copy(alpha = 0.8f),
-                    Color.Transparent
-                ),
-                center = Offset(rootSize.width * 0.98f, rootSize.height * 0.28f),
-                radius = rootSize.width * 0.75f
+            center = Offset(rootSize.width * 0.05f, rootSize.height * 0.02f) + translateBy,
+            radius = rootSize.width * 0.8f
+        ),
+        radius = rootSize.width * 0.8f,
+        center = Offset(rootSize.width * 0.05f, rootSize.height * 0.02f) + translateBy
+    )
+    // Blue glow, right.
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF2563EB).copy(alpha = 0.8f),
+                Color.Transparent
             ),
-            radius = rootSize.width * 0.75f,
-            center = Offset(rootSize.width * 0.98f, rootSize.height * 0.28f)
-        )
-        // Magenta hint, middle.
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    Color(0xFFDB2777).copy(alpha = 0.45f),
-                    Color.Transparent
-                ),
-                center = Offset(rootSize.width * 0.7f, rootSize.height * 0.62f),
-                radius = rootSize.width * 0.6f
+            center = Offset(rootSize.width * 0.98f, rootSize.height * 0.28f) + translateBy,
+            radius = rootSize.width * 0.75f
+        ),
+        radius = rootSize.width * 0.75f,
+        center = Offset(rootSize.width * 0.98f, rootSize.height * 0.28f) + translateBy
+    )
+    // Magenta hint, middle.
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                Color(0xFFDB2777).copy(alpha = 0.45f),
+                Color.Transparent
             ),
-            radius = rootSize.width * 0.6f,
-            center = Offset(rootSize.width * 0.7f, rootSize.height * 0.62f)
-        )
-        // Cyan glow, bottom-left.
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    Color(0xFF0891B2).copy(alpha = 0.7f),
-                    Color.Transparent
-                ),
-                center = Offset(rootSize.width * 0.08f, rootSize.height * 0.98f),
-                radius = rootSize.width * 0.7f
+            center = Offset(rootSize.width * 0.7f, rootSize.height * 0.62f) + translateBy,
+            radius = rootSize.width * 0.6f
+        ),
+        radius = rootSize.width * 0.6f,
+        center = Offset(rootSize.width * 0.7f, rootSize.height * 0.62f) + translateBy
+    )
+    // Cyan glow, bottom-left.
+    drawCircle(
+        brush = Brush.radialGradient(
+            colors = listOf(
+                Color(0xFF0891B2).copy(alpha = 0.7f),
+                Color.Transparent
             ),
-            radius = rootSize.width * 0.7f,
-            center = Offset(rootSize.width * 0.08f, rootSize.height * 0.98f)
-        )
-    }
+            center = Offset(rootSize.width * 0.08f, rootSize.height * 0.98f) + translateBy,
+            radius = rootSize.width * 0.7f
+        ),
+        radius = rootSize.width * 0.7f,
+        center = Offset(rootSize.width * 0.08f, rootSize.height * 0.98f) + translateBy
+    )
 }
 
 
@@ -386,7 +381,7 @@ private fun PurpleSwitch(
         modifier = Modifier
             .size(52.dp, 32.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(trackColor)
+            .background(color = trackColor)
             .clickable { onCheckedChange(!checked) },
         contentAlignment = Alignment.CenterStart
     ) {
@@ -797,23 +792,21 @@ fun HomeScreen() {
 
             // Select Video hero card.
             // Hero orb breathes slowly (scale + glow).
-            val orbTransition = rememberInfiniteTransition(label = "orb")
-            val orbScale by orbTransition.animateFloat(
-                initialValue = 1f,
-                targetValue = 1.07f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(2200),
-                    repeatMode = RepeatMode.Reverse
-                ),
+            var orbBig by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                while (true) {
+                    delay(2200)
+                    orbBig = !orbBig
+                }
+            }
+            val orbScale by animateFloatAsState(
+                targetValue = if (orbBig) 1.07f else 1f,
+                animationSpec = tween(2200),
                 label = "orbScale"
             )
-            val orbAlpha by orbTransition.animateFloat(
-                initialValue = 0.85f,
-                targetValue = 1f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(2200),
-                    repeatMode = RepeatMode.Reverse
-                ),
+            val orbAlpha by animateFloatAsState(
+                targetValue = if (orbBig) 1f else 0.85f,
+                animationSpec = tween(2200),
                 label = "orbAlpha"
             )
             LiquidGlass(
