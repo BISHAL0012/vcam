@@ -1,4 +1,4 @@
-// Vcam HomeScreen — GLASS design (v1.5, mockup vcam-glass reference).
+// Vcam HomeScreen — LIQUID GLASS LIST design (v1.7).
 // Aurora gradient background + frosted-glass cards. Home UI only:
 // Select Video / Photo (hero), View Video, Video / Volume / Soft-Decoding
 // switches, Now Playing banner, License pill, Key bar + Renew.
@@ -8,6 +8,9 @@
 // v1.6 adds Live Photo: a picked photo is animated (slow zoom/pan)
 // as the virtual camera instead of a frozen frame.
 // Logo is an iPhone-style rounded square, NOT a circle.
+// v1.7: list layout (one separate glass card per option), real blur
+// (each card draws the blurred aurora behind it), entrance / press /
+// toggle-spring / breathing-orb animations. NO new features.
 // NOTE: this file intentionally has NO package declaration (it never
 // had one): MainActivity imports it as `import HomeScreen`.
 import android.Manifest
@@ -19,13 +22,22 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,25 +46,31 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -148,62 +166,72 @@ private fun AuroraBackground(content: @Composable BoxScope.() -> Unit) {
             .background(AuroraBase)
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            // Purple glow, top-left.
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color(0xFF7C3AED).copy(alpha = 0.85f),
-                        Color.Transparent
-                    ),
-                    center = Offset(size.width * 0.05f, size.height * 0.02f),
-                    radius = size.width * 0.8f
-                ),
-                radius = size.width * 0.8f,
-                center = Offset(size.width * 0.05f, size.height * 0.02f)
-            )
-            // Blue glow, right.
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color(0xFF2563EB).copy(alpha = 0.8f),
-                        Color.Transparent
-                    ),
-                    center = Offset(size.width * 0.98f, size.height * 0.28f),
-                    radius = size.width * 0.75f
-                ),
-                radius = size.width * 0.75f,
-                center = Offset(size.width * 0.98f, size.height * 0.28f)
-            )
-            // Magenta hint, middle.
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color(0xFFDB2777).copy(alpha = 0.45f),
-                        Color.Transparent
-                    ),
-                    center = Offset(size.width * 0.7f, size.height * 0.62f),
-                    radius = size.width * 0.6f
-                ),
-                radius = size.width * 0.6f,
-                center = Offset(size.width * 0.7f, size.height * 0.62f)
-            )
-            // Cyan glow, bottom-left.
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color(0xFF0891B2).copy(alpha = 0.7f),
-                        Color.Transparent
-                    ),
-                    center = Offset(size.width * 0.08f, size.height * 0.98f),
-                    radius = size.width * 0.7f
-                ),
-                radius = size.width * 0.7f,
-                center = Offset(size.width * 0.08f, size.height * 0.98f)
-            )
+            drawAuroraBlobs(size, Offset.Zero)
         }
         content()
     }
 }
+
+// The four aurora glows, drawn relative to the full-screen size.
+// LiquidGlass reuses this with a negative offset, so each card shows
+// the blurred piece of the background that sits behind it.
+private fun DrawScope.drawAuroraBlobs(rootSize: Size, translateBy: Offset) {
+    translate(translateBy.x, translateBy.y) {
+        // Purple glow, top-left.
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    Color(0xFF7C3AED).copy(alpha = 0.85f),
+                    Color.Transparent
+                ),
+                center = Offset(rootSize.width * 0.05f, rootSize.height * 0.02f),
+                radius = rootSize.width * 0.8f
+            ),
+            radius = rootSize.width * 0.8f,
+            center = Offset(rootSize.width * 0.05f, rootSize.height * 0.02f)
+        )
+        // Blue glow, right.
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    Color(0xFF2563EB).copy(alpha = 0.8f),
+                    Color.Transparent
+                ),
+                center = Offset(rootSize.width * 0.98f, rootSize.height * 0.28f),
+                radius = rootSize.width * 0.75f
+            ),
+            radius = rootSize.width * 0.75f,
+            center = Offset(rootSize.width * 0.98f, rootSize.height * 0.28f)
+        )
+        // Magenta hint, middle.
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    Color(0xFFDB2777).copy(alpha = 0.45f),
+                    Color.Transparent
+                ),
+                center = Offset(rootSize.width * 0.7f, rootSize.height * 0.62f),
+                radius = rootSize.width * 0.6f
+            ),
+            radius = rootSize.width * 0.6f,
+            center = Offset(rootSize.width * 0.7f, rootSize.height * 0.62f)
+        )
+        // Cyan glow, bottom-left.
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    Color(0xFF0891B2).copy(alpha = 0.7f),
+                    Color.Transparent
+                ),
+                center = Offset(rootSize.width * 0.08f, rootSize.height * 0.98f),
+                radius = rootSize.width * 0.7f
+            ),
+            radius = rootSize.width * 0.7f,
+            center = Offset(rootSize.width * 0.08f, rootSize.height * 0.98f)
+        )
+    }
+}
+
 
 @Composable
 private fun GlassBox(
@@ -219,6 +247,100 @@ private fun GlassBox(
     if (onClick != null) m = m.clickable(onClick = onClick)
     Box(modifier = m, content = content)
 }
+
+// Liquid glass card (v1.7): the card draws the blurred aurora that sits
+// behind it, plus a frosted tint and a bright rim. Tappable cards shrink
+// slightly while pressed. On API <31 Modifier.blur is a no-op and the
+// card degrades to the frosted tint (still glassy).
+@Composable
+private fun LiquidGlass(
+    modifier: Modifier = Modifier,
+    corner: Int = 24,
+    onClick: (() -> Unit)? = null,
+    content: @Composable BoxScope.() -> Unit
+) {
+    val density = LocalDensity.current
+    val config = LocalConfiguration.current
+    val screenSizePx = remember(config, density) {
+        with(density) {
+            Size(
+                config.screenWidthDp.dp.toPx(),
+                config.screenHeightDp.dp.toPx()
+            )
+        }
+    }
+    var posInRoot by remember { mutableStateOf(Offset.Zero) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (pressed) 0.97f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "pressScale"
+    )
+    var m = modifier
+        .onGloballyPositioned { posInRoot = it.positionInRoot() }
+        .graphicsLayer { scaleX = pressScale; scaleY = pressScale }
+        .clip(RoundedCornerShape(corner.dp))
+    if (onClick != null) {
+        m = m.clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            onClick = onClick
+        )
+    }
+    Box(modifier = m) {
+        // Blurred copy of the aurora behind this card.
+        Canvas(
+            modifier = Modifier
+                .matchParentSize()
+                .blur(24.dp)
+        ) {
+            drawAuroraBlobs(screenSizePx, Offset(-posInRoot.x, -posInRoot.y))
+        }
+        // Frosted tint + rim.
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(GlassFill)
+                .border(1.dp, GlassBorder, RoundedCornerShape(corner.dp))
+        )
+        content()
+    }
+}
+
+// Small coloured rounded-square chip with a white glyph (list rows).
+@Composable
+private fun IconChip(icon: ImageVector, chipColor: Color) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(chipColor),
+        contentAlignment = Alignment.Center
+    ) {
+        Image(
+            imageVector = icon,
+            contentDescription = null,
+            colorFilter = ColorFilter.tint(Color.White),
+            modifier = Modifier.size(26.dp)
+        )
+    }
+}
+
+// Staggered entrance: cards fade + rise one after another on open.
+@Composable
+private fun entranceModifier(index: Int, entered: Boolean): Modifier {
+    val t by animateFloatAsState(
+        targetValue = if (entered) 1f else 0f,
+        animationSpec = tween(durationMillis = 450, delayMillis = index * 70),
+        label = "enter"
+    )
+    return Modifier.graphicsLayer {
+        alpha = t
+        translationY = (1f - t) * 48f
+    }
+}
+
 
 @Composable
 private fun GlassIconButton(
@@ -248,16 +370,35 @@ private fun PurpleSwitch(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    Switch(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        colors = SwitchDefaults.colors(
-            checkedThumbColor = Color.White,
-            checkedTrackColor = PurpleAccent,
-            uncheckedThumbColor = Color.White,
-            uncheckedTrackColor = Color(0xFF6B7280)
-        )
+    val trackColor by animateColorAsState(
+        targetValue = if (checked) PurpleAccent else Color(0xFF6B7280),
+        label = "track"
     )
+    val thumbTravel by animateFloatAsState(
+        targetValue = if (checked) 1f else 0f,
+        animationSpec = spring(
+            stiffness = Spring.StiffnessMediumLow,
+            dampingRatio = Spring.DampingRatioMediumBouncy
+        ),
+        label = "thumb"
+    )
+    Box(
+        modifier = Modifier
+            .size(52.dp, 32.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(trackColor)
+            .clickable { onCheckedChange(!checked) },
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(start = 3.dp)
+                .offset(x = 20.dp * thumbTravel)
+                .size(26.dp)
+                .clip(CircleShape)
+                .background(Color.White)
+        )
+    }
 }
 
 @Composable
@@ -557,6 +698,10 @@ fun HomeScreen() {
         }
     }
 
+    // Entrance animation: cards fade + rise one after another on open.
+    var entered by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { entered = true }
+
     AuroraBackground {
         Column(
             modifier = Modifier
@@ -566,7 +711,10 @@ fun HomeScreen() {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Header: iPhone-style rounded-square logo + Vcam + crown/settings.
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.then(entranceModifier(0, entered))
+            ) {
                 Image(
                     painter = painterResource(R.drawable.logo),
                     contentDescription = null,
@@ -604,8 +752,8 @@ fun HomeScreen() {
             }
 
             // License pill: days left + active state.
-            GlassBox(
-                modifier = Modifier.fillMaxWidth(),
+            LiquidGlass(
+                modifier = Modifier.fillMaxWidth().then(entranceModifier(1, entered)),
                 corner = 28,
                 onClick = { showRenew = true }
             ) {
@@ -648,8 +796,28 @@ fun HomeScreen() {
             }
 
             // Select Video hero card.
-            GlassBox(
-                modifier = Modifier.fillMaxWidth(),
+            // Hero orb breathes slowly (scale + glow).
+            val orbTransition = rememberInfiniteTransition(label = "orb")
+            val orbScale by orbTransition.animateFloat(
+                initialValue = 1f,
+                targetValue = 1.07f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(2200),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "orbScale"
+            )
+            val orbAlpha by orbTransition.animateFloat(
+                initialValue = 0.85f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(2200),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "orbAlpha"
+            )
+            LiquidGlass(
+                modifier = Modifier.fillMaxWidth().then(entranceModifier(2, entered)),
                 onClick = {
                     requestPermissionLauncher.launch(
                         Manifest.permission.READ_EXTERNAL_STORAGE
@@ -666,6 +834,11 @@ fun HomeScreen() {
                         modifier = Modifier
                             .size(128.dp)
                             .clip(CircleShape)
+                            .graphicsLayer {
+                                scaleX = orbScale
+                                scaleY = orbScale
+                                alpha = orbAlpha
+                            }
                             .background(
                                 Brush.linearGradient(
                                     colors = listOf(
@@ -714,24 +887,19 @@ fun HomeScreen() {
                 }
             }
 
-            // 2x2 glass cards: View Video / Video / Volume / Soft Decoding.
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.height(IntrinsicSize.Max)
+            // Separate liquid-glass list rows (v1.7): one card per option.
+            LiquidGlass(
+                modifier = Modifier.fillMaxWidth().then(entranceModifier(3, entered)),
+                corner = 24,
+                onClick = { homeController.isVideoDisplay.value = true }
             ) {
-                // View Video.
-                GlassBox(
-                    modifier = Modifier.weight(1f),
-                    onClick = { homeController.isVideoDisplay.value = true }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Image(
-                            imageVector = IconEye,
-                            contentDescription = null,
-                            colorFilter = ColorFilter.tint(BlueAccent),
-                            modifier = Modifier.size(30.dp)
-                        )
-                        Spacer(Modifier.height(10.dp))
+                    IconChip(IconEye, BlueAccent)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
                         Text(
                             text = "View Video",
                             fontSize = 18.sp,
@@ -744,32 +912,26 @@ fun HomeScreen() {
                             color = SubText
                         )
                     }
-                    GlassBox(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .align(Alignment.CenterEnd),
-                        corner = 18
-                    ) {
-                        Image(
-                            imageVector = IconChevron,
-                            contentDescription = null,
-                            colorFilter = ColorFilter.tint(Color.White),
-                            modifier = Modifier
-                                .size(20.dp)
-                                .align(Alignment.Center)
-                        )
-                    }
+                    Image(
+                        imageVector = IconChevron,
+                        contentDescription = null,
+                        colorFilter = ColorFilter.tint(Color.White),
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
-                // Video On/Off.
-                GlassBox(modifier = Modifier.weight(1f)) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Image(
-                            imageVector = IconVideocam,
-                            contentDescription = null,
-                            colorFilter = ColorFilter.tint(PurpleAccent),
-                            modifier = Modifier.size(30.dp)
-                        )
-                        Spacer(Modifier.height(10.dp))
+            }
+            LiquidGlass(
+                modifier = Modifier.fillMaxWidth().then(entranceModifier(4, entered)),
+                corner = 24,
+                onClick = { toggleVideo() }
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
+                ) {
+                    IconChip(IconVideocam, PurpleAccent)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
                         Text(
                             text = "Video " + if (videoOn) "On" else "Off",
                             fontSize = 18.sp,
@@ -781,33 +943,25 @@ fun HomeScreen() {
                             fontSize = 13.sp,
                             color = SubText
                         )
-                        Spacer(Modifier.height(12.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            PurpleSwitch(
-                                checked = videoOn,
-                                onCheckedChange = { toggleVideo() }
-                            )
-                        }
                     }
+                    PurpleSwitch(
+                        checked = videoOn,
+                        onCheckedChange = { toggleVideo() }
+                    )
                 }
             }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.height(IntrinsicSize.Max)
+            LiquidGlass(
+                modifier = Modifier.fillMaxWidth().then(entranceModifier(5, entered)),
+                corner = 24,
+                onClick = { toggleVolume() }
             ) {
-                // Volume On/Off.
-                GlassBox(modifier = Modifier.weight(1f)) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Image(
-                            imageVector = IconVolume,
-                            contentDescription = null,
-                            colorFilter = ColorFilter.tint(PurpleAccent),
-                            modifier = Modifier.size(30.dp)
-                        )
-                        Spacer(Modifier.height(10.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
+                ) {
+                    IconChip(IconVolume, Color(0xFFEC4899))
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
                         Text(
                             text = "Volume " + if (volumeOn) "On" else "Off",
                             fontSize = 18.sp,
@@ -819,28 +973,25 @@ fun HomeScreen() {
                             fontSize = 13.sp,
                             color = SubText
                         )
-                        Spacer(Modifier.height(12.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            PurpleSwitch(
-                                checked = volumeOn,
-                                onCheckedChange = { toggleVolume() }
-                            )
-                        }
                     }
+                    PurpleSwitch(
+                        checked = volumeOn,
+                        onCheckedChange = { toggleVolume() }
+                    )
                 }
-                // Soft Decoding.
-                GlassBox(modifier = Modifier.weight(1f)) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Image(
-                            imageVector = IconLayers,
-                            contentDescription = null,
-                            colorFilter = ColorFilter.tint(PurpleAccent),
-                            modifier = Modifier.size(30.dp)
-                        )
-                        Spacer(Modifier.height(10.dp))
+            }
+            LiquidGlass(
+                modifier = Modifier.fillMaxWidth().then(entranceModifier(6, entered)),
+                corner = 24,
+                onClick = { setSoftDecoding(!softOn) }
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
+                ) {
+                    IconChip(IconLayers, Color(0xFF22C55E))
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
                         Text(
                             text = "Soft Decoding",
                             fontSize = 18.sp,
@@ -852,22 +1003,17 @@ fun HomeScreen() {
                             fontSize = 13.sp,
                             color = SubText
                         )
-                        Spacer(Modifier.height(12.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
-                        ) {
-                            PurpleSwitch(
-                                checked = softOn,
-                                onCheckedChange = { setSoftDecoding(it) }
-                            )
-                        }
                     }
+                    PurpleSwitch(
+                        checked = softOn,
+                        onCheckedChange = { setSoftDecoding(it) }
+                    )
                 }
             }
 
+
             // Now Playing glass card.
-            GlassBox(modifier = Modifier.fillMaxWidth()) {
+            LiquidGlass(modifier = Modifier.fillMaxWidth().then(entranceModifier(7, entered))) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
@@ -977,8 +1123,8 @@ fun HomeScreen() {
             }
 
             // Key bar: expiry + Renew button.
-            GlassBox(
-                modifier = Modifier.fillMaxWidth(),
+            LiquidGlass(
+                modifier = Modifier.fillMaxWidth().then(entranceModifier(8, entered)),
                 corner = 28
             ) {
                 Row(
